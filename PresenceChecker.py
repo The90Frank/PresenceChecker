@@ -8,13 +8,13 @@
 #                               #
 #################################
 
-import sys
 import os
-import pcapy
+import sys
 import time
-import datetime
+import pcapy
 import signal
 import thread
+import datetime
 from impacket.ImpactDecoder import RadioTapDecoder, Dot11ControlDecoder, DataDecoder
 
 interface = 'wlan0mon'
