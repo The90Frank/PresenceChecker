@@ -72,7 +72,7 @@ def recv_pkts(hdr, data):
             ha[macS] = l
 
     #esporta su file (thread in parallelo)
-    if (time - lastexport).seconds > delay:
+    if ((time - lastexport).seconds > delay) & len(ha.keys()) :
         haexport = ha
         ha = {}
         lastexport = time
