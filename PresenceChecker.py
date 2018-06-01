@@ -21,9 +21,9 @@ interface = 'wlan0mon'
 monitor_enable  = 'airmon-ng start wlan0;'
 monitor_disable = 'airmon-ng stop wlan0mon;'
 
-max_bytes = 1024 # da rivedere si puo accorciare
+max_bytes = 128 # da rivedere si puo accorciare
 promiscuous = True
-read_timeout = 100
+read_timeout = 10
 ignore = ["0x0:0x0:0x0:0x0:0x0:0x0"] #mac da ignorare (ex. accesspoint della rete)
 ha={}
 
