@@ -15,16 +15,18 @@ import pcapy
 import signal
 import thread
 import datetime
+import xml.etree.ElementTree as ET
 from impacket.ImpactDecoder import RadioTapDecoder, Dot11ControlDecoder, DataDecoder
 
-interface = 'wlan0mon'
-monitor_enable  = 'airmon-ng start wlan0;'
-monitor_disable = 'airmon-ng stop wlan0mon;'
+interface = ''
+moninterface = ''
+monitor_enable  = 'airmon-ng start '
+monitor_disable = 'airmon-ng stop '
 
 max_bytes = 128 # da rivedere si puo accorciare
 promiscuous = True
 read_timeout = 10
-ignore = ["0x0:0x0:0x0:0x0:0x0:0x0"] #mac da ignorare (ex. accesspoint della rete)
+ignore = [] #mac da ignorare (ex. accesspoint della rete)
 ha={}
 
 delay = 5 # delay per export
@@ -45,38 +47,42 @@ def exporter(haexport):
 def recv_pkts(hdr, data):
     global lastexport
     global ha
-
-    #decodifica del pacchetto
-    radio = RadioTapDecoder().decode(data)
-    datadown = radio.get_body_as_string()
-    ethe = Dot11ControlDecoder().decode(datadown)
-    datadowndown = ethe.get_body_as_string()
-    decodedDataDownDown = DataDecoder().decode(datadowndown)
-    ethMacS = [None] * 6
-    for i in range(0,6):
-        #salto i primi 8 byte per ottenere il mac trasmittente
-        ethMacS[i] = hex(decodedDataDownDown.get_byte(8+i)) 
-    macS = ':'.join(map(str, ethMacS))
-    s = type(radio.get_dBm_ant_signal())
     
-    time = datetime.datetime.now()
+    try:
+        #decodifica del pacchetto
+        radio = RadioTapDecoder().decode(data)
+        datadown = radio.get_body_as_string()
+        ethe = Dot11ControlDecoder().decode(datadown)
+        datadowndown = ethe.get_body_as_string()
+        decodedDataDownDown = DataDecoder().decode(datadowndown)
+        ethMacS = [None] * 6
+        for i in range(0,6):
+            #salto i primi 8 byte per ottenere il mac trasmittente
+            ethMacS[i] = hex(decodedDataDownDown.get_byte(8+i)) 
+        macS = ':'.join(map(str, ethMacS))
+        s = type(radio.get_dBm_ant_signal())
+        
+        time = datetime.datetime.now()
 
-    #aggiunta al dizionario
-    if (s is int) & (macS not in ignore):
-        signal = hex(radio.get_dBm_ant_signal())
-        t = (time,signal)
-        if (ha.has_key(macS)):
-            ha.get(macS).append(t)
-        else:
-            l = [t]
-            ha[macS] = l
+        #aggiunta al dizionario
+        if (s is int) & (macS not in ignore):
+            signal = hex(radio.get_dBm_ant_signal())
+            t = (time,signal)
+            if (ha.has_key(macS)):
+                ha.get(macS).append(t)
+            else:
+                l = [t]
+                ha[macS] = l
 
-    #esporta su file (thread in parallelo)
-    if ((time - lastexport).seconds > delay) & len(ha.keys()) :
-        haexport = ha
-        ha = {}
-        lastexport = time
-        thread.start_new_thread(exporter, (haexport, ) )
+        #esporta su file (thread in parallelo)
+        if ((time - lastexport).seconds > delay) & len(ha.keys()) :
+            haexport = ha
+            ha = {}
+            lastexport = time
+            thread.start_new_thread(exporter, (haexport, ) )
+    
+    except KeyboardInterrupt: raise
+    except: pass
 
 def mysniff(interface):
     pcapy.findalldevs()
@@ -86,11 +92,35 @@ def mysniff(interface):
     pc.loop(packet_limit, recv_pkts) # cattura pacchetti
 
 def main():
-    thread.start_new_thread(exporter,())
-    os.system(monitor_enable)
-    try: mysniff(interface)
-    except KeyboardInterrupt: sys.exit()
-    finally:
-        os.system(monitor_disable)
+
+    global interface
+    global moninterface
+    global monitor_enable
+    global monitor_disable
+    global ignore
+
+    interfaces = os.listdir('/sys/class/net/')
+    
+    if (len(sys.argv) == 2) and (sys.argv[1] in interfaces) or ((len(sys.argv) == 3) and (sys.argv[1] in interfaces) and (os.path.isfile(sys.argv[2]))):
+        interface = sys.argv[1]
+        moninterface = interface + 'mon'
+        monitor_enable = monitor_enable + interface + ';'
+        monitor_disable = monitor_disable + moninterface + ';'
+
+        tree = ET.parse(sys.argv[2])
+        root = tree.getroot() 
+
+        for child in root:
+            ignore.append(child.text)
+
+        os.system(monitor_enable)
+        try: mysniff(moninterface)
+        except KeyboardInterrupt: sys.exit()
+        finally:
+            os.system(monitor_disable)
+    else:
+        print '[!] Insert a valid interface'
+        print '[!] example: python ' + sys.argv[0] + ' eth0'
+        print '[!] example: python ' + sys.argv[0] + ' eth0 ./ignore.xml'
 
 main()
