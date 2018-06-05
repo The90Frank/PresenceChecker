@@ -61,7 +61,7 @@ def recv_pkts(hdr, data):
             ethMacS[i] = hex(decodedDataDownDown.get_byte(8+i)) 
         macS = ':'.join(map(str, ethMacS))
         s = type(radio.get_dBm_ant_signal())
-        
+
         time = datetime.datetime.now()
 
         #aggiunta al dizionario
@@ -107,11 +107,12 @@ def main():
         monitor_enable = monitor_enable + interface + ';'
         monitor_disable = monitor_disable + moninterface + ';'
 
-        tree = ET.parse(sys.argv[2])
-        root = tree.getroot() 
+        if len(sys.argv) == 3:
+            tree = ET.parse(sys.argv[2])
+            root = tree.getroot() 
 
-        for child in root:
-            ignore.append(child.text)
+            for child in root:
+                ignore.append(child.text)
 
         os.system(monitor_enable)
         try: mysniff(moninterface)
