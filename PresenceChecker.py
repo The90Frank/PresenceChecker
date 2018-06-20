@@ -34,14 +34,22 @@ directory = os.path.expanduser("~")
 
 #scrittura su file
 def exporter(haexport):
-    name = directory + "/wfm "+ str(datetime.datetime.now()) +".log"
-    with open(name, "a") as myfile:
-        for h in haexport:
-            myfile.write(h + "\n")
-            for n in haexport.get(h):
-                t = n[0]
-                i = n[1]
-                myfile.write("      " + str(t) + " |> " + str(i) + "\n")
+    name = directory + "/wfm "+ str(datetime.datetime.now()) +".log.xml"
+
+    root = ET.Element("root")
+    for h in haexport:
+        doc = ET.SubElement(root, h)
+        idx = 0
+        for n in haexport.get(h):
+            t = n[0]
+            i = n[1]
+            tup = ET.SubElement(doc, str(idx))
+            ET.SubElement(tup, "time").text = str(t)
+            ET.SubElement(tup, "intensify").text = str(i)
+            idx = idx + 1
+
+    tree = ET.ElementTree(root)
+    tree.write(name)
 
 # callback per ricevere pacchetti
 def recv_pkts(hdr, data):
