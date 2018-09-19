@@ -1,3 +1,5 @@
+#!/bin/env python2
+
 #################################
 #                               #
 #       Presence Checker        #
@@ -30,7 +32,17 @@ interface = ''
 moninterface = ''
 monitor_disable = 'airmon-ng stop '
 monitor_enable  = 'airmon-ng start '
+canale = 0 #canali da 1-13 (giro i numeri da 0-12)
 directory = os.path.expanduser("~")
+
+#rotazione dei canali
+def rotator(s):
+    while(1):
+        global canale
+        canale = ((canale + 1) % 13)
+        change_channel = 'iw dev wlan0mon set channel ' + str(canale+1)
+        os.system(change_channel)
+        time.sleep(s)
 
 #scrittura su file
 def exporter(haexport):
@@ -55,7 +67,7 @@ def exporter(haexport):
 def recv_pkts(hdr, data):
     global lastexport
     global ha
-    
+
     try:
         #decodifica del pacchetto
         radio = RadioTapDecoder().decode(data)
@@ -139,7 +151,11 @@ def main():
                 ignore.append(child.text)
 
         os.system(monitor_enable)
-        try: mysniff(moninterface)
+
+        try:
+            #avvio la rotazione dei canali
+            thread.start_new_thread(rotator, (1,))
+            thread.start_new_thread(mysniff(moninterface))
         except KeyboardInterrupt: sys.exit()
         finally:
             os.system(monitor_disable)
