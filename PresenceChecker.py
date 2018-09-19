@@ -23,9 +23,10 @@ from impacket.ImpactDecoder import RadioTapDecoder, Dot11ControlDecoder, DataDec
 ha={}
 delay = 5 # delay per export
 ignore = [] # mac da ignorare (ex. accesspoint della rete)
-max_bytes = 128 # da rivedere si puo accorciare
-read_timeout = 10
+max_bytes = 256
+read_timeout = 100
 promiscuous = True
+pacchetticatturati = 0
 lastexport = datetime.datetime.now()
 
 interface = ''
@@ -36,7 +37,7 @@ canale = 0 #canali da 1-13 (giro i numeri da 0-12)
 directory = os.path.expanduser("~")
 
 #rotazione dei canali
-def rotator(s):
+def channelLoop(s):
     while(1):
         global canale
         canale = ((canale + 1) % 13)
@@ -44,9 +45,28 @@ def rotator(s):
         os.system(change_channel)
         time.sleep(s)
 
+#stampa di "interfaccia"
+def interfaceLoop():
+    while(1):
+        PC = str(pacchetticatturati)
+        LE = str(lastexport)
+        sys.stdout.write("\rPacchetti Catturati: "+PC+" - Ultimo Export: "+LE)
+        sys.stdout.flush()
+        time.sleep(0.5)
+
+#formattazione MAC
+def addressDecode(x):
+    s = ""
+    aux = [None] * 6
+    for i in range(0,6):
+        #salto i primi 8 byte per ottenere il mac trasmittente
+        aux[i] = hex(x.get_byte(8+i))[2:]
+    s = ':'.join(aux)
+    return s
+
 #scrittura su file
 def exporter(haexport):
-    name = directory + "/wfm "+ str(datetime.datetime.now()) +".log.xml"
+    name = directory + "/prschk "+ str(lastexport) +".log.xml"
 
     root = ET.Element("root")
     for h in haexport:
@@ -67,6 +87,7 @@ def exporter(haexport):
 def recv_pkts(hdr, data):
     global lastexport
     global ha
+    global pacchetticatturati
 
     try:
         #decodifica del pacchetto
@@ -75,12 +96,8 @@ def recv_pkts(hdr, data):
         ethe = Dot11ControlDecoder().decode(datadown)
         datadowndown = ethe.get_body_as_string()
         decodedDataDownDown = DataDecoder().decode(datadowndown)
-        ethMacS = [None] * 6
-        for i in range(0,6):
-            #salto i primi 8 byte per ottenere il mac trasmittente
-            ethMacS[i] = hex(decodedDataDownDown.get_byte(8+i)) 
-        macS = ':'.join(map(str, ethMacS))
 
+        macS = (addressDecode(decodedDataDownDown))
         s = type(radio.get_dBm_ant_signal())
 
         time = datetime.datetime.now()
@@ -88,13 +105,14 @@ def recv_pkts(hdr, data):
         #aggiunta al dizionario
         #controllo se il segnale ha un valore consistente, in caso contrario scarto
         if (s is int):
-            signal = hex(radio.get_dBm_ant_signal())
+            signal = str(-(256 - radio.get_dBm_ant_signal()))+ " dB"
             t = (time,signal)
             if (ha.has_key(macS)):
                 ha.get(macS).append(t)
             else:
                 l = [t]
                 ha[macS] = l
+            pacchetticatturati = pacchetticatturati + 1
 
         #esporta su file (thread in parallelo)
         if ((time - lastexport).seconds > delay) & len(ha.keys()) :
@@ -104,7 +122,7 @@ def recv_pkts(hdr, data):
             thread.start_new_thread(exporter, (haexport, ) )
     
     except KeyboardInterrupt: raise
-    except: pass
+    except: pass #per evitare che crashi qual'ora ci siano errori nel pacchetto
 
 def mysniff(interface):
     global ignore
@@ -154,8 +172,9 @@ def main():
 
         try:
             #avvio la rotazione dei canali
-            thread.start_new_thread(rotator, (1,))
-            thread.start_new_thread(mysniff(moninterface))
+            thread.start_new_thread(channelLoop, (1,))
+            thread.start_new_thread(interfaceLoop, ())
+            mysniff(moninterface)
         except KeyboardInterrupt: sys.exit()
         finally:
             os.system(monitor_disable)
