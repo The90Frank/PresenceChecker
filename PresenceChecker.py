@@ -172,7 +172,7 @@ def main():
 
         try:
             #avvio la rotazione dei canali
-            thread.start_new_thread(channelLoop, (1,))
+            thread.start_new_thread(channelLoop, (0.1,))
             thread.start_new_thread(interfaceLoop, ())
             mysniff(moninterface)
         except KeyboardInterrupt: sys.exit()
