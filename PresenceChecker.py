@@ -119,7 +119,7 @@ def recv_pkts(hdr, data):
     global ha
     global pacchetticatturati
     try:
-        if (len(data) >= 128):
+        if (len(data) >= 31):
             #decodifica del pacchetto
             radio = RadioTapDecoder().decode(data)
             datadown = radio.get_body_as_string()
@@ -152,11 +152,12 @@ def recv_pkts(hdr, data):
                 thread.start_new_thread(exporter, (haexport, ) )
     
     except KeyboardInterrupt: raise
-    except Exception as e: 
+    except: 
         #per evitare che crashi qual'ora ci siano errori imprevisti, ne tengo traccia per il debug
         global imprexc
-        imprexc = e
-        thread.start_new_thread(exporterException, (e, ) )
+        _, exc_obj, exc_tb = sys.exc_info()
+        imprexc = (exc_obj, exc_tb.tb_lineno)
+        thread.start_new_thread(exporterException, (imprexc, ) )
 
 def mysniff(interface):
     global ignore
@@ -205,7 +206,7 @@ def main():
 
         os.system(monitor_enable)
         t1 = Thread(target=channelLoop, args=(0.1,))
-        t2 = Thread(target=interfaceLoop, args=(1,10))
+        t2 = Thread(target=interfaceLoop, args=(0.5,10))
 
         try:
             t1.start()
