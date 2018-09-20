@@ -17,6 +17,9 @@ import pcapy
 import signal
 import thread
 import datetime
+import traceback
+from reprint import output
+from threading import Thread
 import xml.etree.ElementTree as ET
 from impacket.ImpactDecoder import RadioTapDecoder, Dot11ControlDecoder, DataDecoder
 
@@ -28,31 +31,52 @@ read_timeout = 100
 promiscuous = True
 pacchetticatturati = 0
 lastexport = datetime.datetime.now()
-
+running = True
 interface = ''
 moninterface = ''
 monitor_disable = 'airmon-ng stop '
 monitor_enable  = 'airmon-ng start '
 canale = 0 #canali da 1-13 (giro i numeri da 0-12)
 directory = os.path.expanduser("~")
+imprexc = None
 
 #rotazione dei canali
 def channelLoop(s):
-    while(1):
-        global canale
-        canale = ((canale + 1) % 13)
-        change_channel = 'iw dev wlan0mon set channel ' + str(canale+1)
-        os.system(change_channel)
-        time.sleep(s)
+    try:
+        while(running):
+            global canale
+            canale = ((canale + 1) % 13)
+            change_channel = 'iw dev '+moninterface+' set channel ' + str(canale+1)
+            os.system(change_channel)
+            time.sleep(s)
+    except KeyboardInterrupt: raise
 
 #stampa di "interfaccia"
-def interfaceLoop():
-    while(1):
-        PC = str(pacchetticatturati)
-        LE = str(lastexport)
-        sys.stdout.write("\rPacchetti Catturati: "+PC+" - Ultimo Export: "+LE)
-        sys.stdout.flush()
-        time.sleep(0.5)
+def interfaceLoop(t,nprint):
+    try:
+        with output(output_type='dict') as output_lines:
+            while(running):
+                idict = dict(ha)
+                PC = str(pacchetticatturati)
+                LE = str(lastexport)
+                ch = canale
+                ee = str(imprexc)
+                output_lines['Channel'] = "[{cc}] - Packet: [{pp}]".format(cc=ch, pp=PC)
+                output_lines['Last Export'] = "[{le}]".format(le=LE)
+                output_lines['Debug'] = "[{exc}]".format(exc = ee)
+
+                if (nprint > 0):
+                    ssize = min(nprint, len(idict))
+                else:
+                    ssize = len(idict)
+
+                for i in range(0,ssize):
+                    k = sorted(idict.keys())[i]
+                    s = idict.get(k)[-1][1]
+                    output_lines[i] = "MAC: {mc} - Signal: {sg}".format(mc = k, sg = s)
+
+                time.sleep(t)
+    except KeyboardInterrupt: raise
 
 #formattazione MAC
 def addressDecode(x):
@@ -83,46 +107,56 @@ def exporter(haexport):
     tree = ET.ElementTree(root)
     tree.write(name)
 
+#scrittura su file di eventuali eccezioni impreviste
+def exporterException(ee):
+    s = str(ee) + "\n"
+    with open('Debug.log', mode='a') as contents:
+        contents.write(s)
+
 # callback per ricevere pacchetti
 def recv_pkts(hdr, data):
     global lastexport
     global ha
     global pacchetticatturati
-
     try:
-        #decodifica del pacchetto
-        radio = RadioTapDecoder().decode(data)
-        datadown = radio.get_body_as_string()
-        ethe = Dot11ControlDecoder().decode(datadown)
-        datadowndown = ethe.get_body_as_string()
-        decodedDataDownDown = DataDecoder().decode(datadowndown)
+        if (len(data) >= 128):
+            #decodifica del pacchetto
+            radio = RadioTapDecoder().decode(data)
+            datadown = radio.get_body_as_string()
+            ethe = Dot11ControlDecoder().decode(datadown)
+            datadowndown = ethe.get_body_as_string()
+            decodedDataDownDown = DataDecoder().decode(datadowndown)
 
-        macS = (addressDecode(decodedDataDownDown))
-        s = type(radio.get_dBm_ant_signal())
+            macS = (addressDecode(decodedDataDownDown))
+            s = type(radio.get_dBm_ant_signal())
 
-        time = datetime.datetime.now()
+            time = datetime.datetime.now()
 
-        #aggiunta al dizionario
-        #controllo se il segnale ha un valore consistente, in caso contrario scarto
-        if (s is int):
-            signal = str(-(256 - radio.get_dBm_ant_signal()))+ " dB"
-            t = (time,signal)
-            if (ha.has_key(macS)):
-                ha.get(macS).append(t)
-            else:
-                l = [t]
-                ha[macS] = l
-            pacchetticatturati = pacchetticatturati + 1
+            #aggiunta al dizionario
+            #controllo se il segnale ha un valore consistente, in caso contrario scarto
+            if (s is int):
+                signal = str(-(256 - radio.get_dBm_ant_signal()))+ " dB"
+                t = (time,signal)
+                if (ha.has_key(macS)):
+                    ha.get(macS).append(t)
+                else:
+                    l = [t]
+                    ha[macS] = l
+                pacchetticatturati = pacchetticatturati + 1
 
-        #esporta su file (thread in parallelo)
-        if ((time - lastexport).seconds > delay) & len(ha.keys()) :
-            haexport = ha
-            ha = {}
-            lastexport = time
-            thread.start_new_thread(exporter, (haexport, ) )
+            #esporta su file (thread in parallelo)
+            if ((time - lastexport).seconds > delay) & len(ha.keys()) :
+                haexport = ha
+                ha = {}
+                lastexport = time
+                thread.start_new_thread(exporter, (haexport, ) )
     
     except KeyboardInterrupt: raise
-    except: pass #per evitare che crashi qual'ora ci siano errori nel pacchetto
+    except Exception as e: 
+        #per evitare che crashi qual'ora ci siano errori imprevisti, ne tengo traccia per il debug
+        global imprexc
+        imprexc = e
+        thread.start_new_thread(exporterException, (e, ) )
 
 def mysniff(interface):
     global ignore
@@ -139,8 +173,9 @@ def mysniff(interface):
     pc.loop(packet_limit, recv_pkts) # cattura pacchetti
 
 def main():
-
+    
     global ignore
+    global running
     global directory
     global interface
     global moninterface
@@ -169,15 +204,20 @@ def main():
                 ignore.append(child.text)
 
         os.system(monitor_enable)
+        t1 = Thread(target=channelLoop, args=(0.1,))
+        t2 = Thread(target=interfaceLoop, args=(1,10))
 
         try:
-            #avvio la rotazione dei canali
-            thread.start_new_thread(channelLoop, (0.1,))
-            thread.start_new_thread(interfaceLoop, ())
+            t1.start()
+            t2.start()
             mysniff(moninterface)
-        except KeyboardInterrupt: sys.exit()
+        except KeyboardInterrupt: 
+            running = False
         finally:
+            t1.join()
+            t2.join()
             os.system(monitor_disable)
+            sys.exit()
     else:
         print '[!] Insert a valid interface or a valid ignore file'
         print '[!] example: python ' + sys.argv[0] + ' wlan0'
