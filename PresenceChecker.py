@@ -62,7 +62,7 @@ def interfaceLoop(t,nprint):
                 LE = str(lastexport)
                 ch = canale
                 ee = str(imprexc)
-                output_lines['Channel'] = "[{cc}] - Packet: [{pp}]".format(cc=ch, pp=PC)
+                output_lines['Channel'] = "[{cc}] - Packet: [{pp}] - Interface: [{ii}]".format(cc=ch, pp=PC, ii=moninterface)
                 output_lines['Last Export'] = "[{le}]".format(le=LE)
                 output_lines['Debug'] = "[{exc}]".format(exc = ee)
 
@@ -194,7 +194,7 @@ def main():
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        moninterface = interface + 'mon'
+        moninterface = interface # + 'mon'
         monitor_enable = monitor_enable + interface + ';'
         monitor_disable = monitor_disable + moninterface + ';'
 
@@ -205,7 +205,7 @@ def main():
             for child in root:
                 ignore.append(child.text)
 
-        os.system(monitor_enable)
+        #os.system(monitor_enable)
         t1 = Thread(target=channelLoop, args=(0.1,))
         t2 = Thread(target=interfaceLoop, args=(0.5,10))
 
@@ -218,11 +218,11 @@ def main():
         finally:
             t1.join()
             t2.join()
-            os.system(monitor_disable)
+            #os.system(monitor_disable)
             sys.exit()
     else:
         print '[!] Insert a valid interface or a valid ignore file'
-        print '[!] example: python ' + sys.argv[0] + ' wlan0'
-        print '[!] example: python ' + sys.argv[0] + ' wlan0 ./ignore.xml'
+        print '[!] example: python ' + sys.argv[0] + ' wlan0mon'
+        print '[!] example: python ' + sys.argv[0] + ' wlan0mon ./ignore.xml'
 
 main()
