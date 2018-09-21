@@ -15,6 +15,7 @@ import sys
 import time
 import pcapy
 import signal
+import struct
 import thread
 import datetime
 import traceback
@@ -119,39 +120,39 @@ def recv_pkts(hdr, data):
     global ha
     global pacchetticatturati
     try:
-        if (len(data) >= 31):
-            #decodifica del pacchetto
-            radio = RadioTapDecoder().decode(data)
-            datadown = radio.get_body_as_string()
-            ethe = Dot11ControlDecoder().decode(datadown)
-            datadowndown = ethe.get_body_as_string()
-            decodedDataDownDown = DataDecoder().decode(datadowndown)
+        #decodifica del pacchetto
+        radio = RadioTapDecoder().decode(data)
+        datadown = radio.get_body_as_string()
+        ethe = Dot11ControlDecoder().decode(datadown)
+        datadowndown = ethe.get_body_as_string()
+        decodedDataDownDown = DataDecoder().decode(datadowndown)
 
-            macS = (addressDecode(decodedDataDownDown))
-            s = type(radio.get_dBm_ant_signal())
+        macS = (addressDecode(decodedDataDownDown))
+        s = type(radio.get_dBm_ant_signal())
 
-            time = datetime.datetime.now()
+        time = datetime.datetime.now()
 
-            #aggiunta al dizionario
-            #controllo se il segnale ha un valore consistente, in caso contrario scarto
-            if (s is int):
-                signal = str(-(256 - radio.get_dBm_ant_signal()))+ " dB"
-                t = (time,signal)
-                if (ha.has_key(macS)):
-                    ha.get(macS).append(t)
-                else:
-                    l = [t]
-                    ha[macS] = l
-                pacchetticatturati = pacchetticatturati + 1
+        #aggiunta al dizionario
+        #controllo se il segnale ha un valore consistente, in caso contrario scarto
+        if (s is int):
+            signal = str(-(256 - radio.get_dBm_ant_signal()))+ " dB"
+            t = (time,signal)
+            if (ha.has_key(macS)):
+                ha.get(macS).append(t)
+            else:
+                l = [t]
+                ha[macS] = l
+            pacchetticatturati = pacchetticatturati + 1
 
-            #esporta su file (thread in parallelo)
-            if ((time - lastexport).seconds > delay) & len(ha.keys()) :
-                haexport = ha
-                ha = {}
-                lastexport = time
-                thread.start_new_thread(exporter, (haexport, ) )
+        #esporta su file (thread in parallelo)
+        if ((time - lastexport).seconds > delay) & len(ha.keys()) :
+            haexport = ha
+            ha = {}
+            lastexport = time
+            thread.start_new_thread(exporter, (haexport, ) )
     
     except KeyboardInterrupt: raise
+    except struct.error: pass #perche non lanciano eccezioni custom quelli di Impacket
     except: 
         #per evitare che crashi qual'ora ci siano errori imprevisti, ne tengo traccia per il debug
         global imprexc
