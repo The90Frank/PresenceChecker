@@ -1,4 +1,4 @@
-#!/bin/env python2
+#!/usr/bin/env python
 
 #################################
 #                               #
@@ -62,18 +62,25 @@ def interfaceLoop(t,nprint):
                 LE = str(lastexport)
                 ch = canale
                 ee = str(imprexc)
+                interfacedict = {}
+
                 output_lines['Channel'] = "[{cc}] - Packet: [{pp}] - Interface: [{ii}]".format(cc=ch, pp=PC, ii=moninterface)
                 output_lines['Last Export'] = "[{le}]".format(le=LE)
                 output_lines['Debug'] = "[{exc}]".format(exc = ee)
 
+                for k in idict:
+                    interfacedict[k] = idict.get(k)[-1][1]
+
                 if (nprint > 0):
-                    ssize = min(nprint, len(idict))
+                    ssize = min(nprint, len(interfacedict))
                 else:
-                    ssize = len(idict)
+                    ssize = len(interfacedict)
+
+                sorted_d = sorted(interfacedict.items(), key=lambda x: x[1])
 
                 for i in range(0,ssize):
-                    k = sorted(idict.keys())[i]
-                    s = idict.get(k)[-1][1]
+                    k = sorted_d[i][0]
+                    s = sorted_d[i][1]
                     output_lines[i] = "MAC: {mc} - Signal: {sg}".format(mc = k, sg = s)
 
                 time.sleep(t)
