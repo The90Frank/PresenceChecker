@@ -10,7 +10,7 @@
 
 import os
 import sys
-from datetime import datetime
+from datetime import datetime,  timedelta
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
 
@@ -22,11 +22,22 @@ def printUsage(n):
 def printGrap(d,m):
     x = []
     y = []
+    last_d = None
+    i = 0
+    s = 0
     d[m].sort(key=lambda tup: tup[0])
     for e in d[m]:
-        x.append(datetime.strptime(e[0],'%Y-%m-%d %H:%M:%S.%f'))
-        y.append(int(e[1][:-3]))
-        print datetime.strptime(e[0],'%Y-%m-%d %H:%M:%S.%f')
+        current_d = datetime.strptime(e[0][:-7],'%Y-%m-%d %H:%M:%S')
+        if (last_d is not None) and (last_d - current_d) == timedelta(0):
+            i = i+1
+            s = s+int(e[1][:-3])
+        else :
+            if (last_d is not None):
+                x.append(last_d)
+                y.append(s/i)
+            last_d = current_d
+            i = 1
+            s = int(e[1][:-3])
     plt.plot(x, y)
     plt.show()
 
