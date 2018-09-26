@@ -25,21 +25,26 @@ def printGrap(d,m):
     last_d = None
     i = 0
     s = 0
-    d[m].sort(key=lambda tup: tup[0])
-    for e in d[m]:
-        current_d = datetime.strptime(e[0][:-7],'%Y-%m-%d %H:%M:%S')
-        if (last_d is not None) and (last_d - current_d) == timedelta(0):
-            i = i+1
-            s = s+int(e[1][:-3])
-        else :
-            if (last_d is not None):
-                x.append(last_d)
-                y.append(s/i)
-            last_d = current_d
-            i = 1
-            s = int(e[1][:-3])
-    plt.plot(x, y)
-    plt.show()
+    if d.has_key(m):
+        d[m].sort(key=lambda tup: tup[0])
+        for e in d[m]:
+            current_d = datetime.strptime(e[0][:-7],'%Y-%m-%d %H:%M:%S')
+            if (last_d is not None) and (last_d - current_d) == timedelta(0):
+                i = i+1
+                s = s+int(e[1][:-3])
+            else :
+                if (last_d is not None):
+                    x.append(last_d)
+                    y.append(s/i)
+                last_d = current_d
+                i = 1
+                s = int(e[1][:-3])
+        plt.xticks(rotation = 30)
+        plt.yticks(rotation = 30)
+        plt.plot(x, y)
+        plt.show()
+    else:
+        print "[!] MAC not found"
 
 def parseAll(path):
     global value
