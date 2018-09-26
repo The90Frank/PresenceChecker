@@ -10,14 +10,14 @@
 
 import os
 import sys
-from datetime import datetime,  timedelta
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
+from datetime import datetime,  timedelta
 
 value = {}
 
 def printUsage(n):
-    print '[!] ' + n + ' [folder path] [mac]'
+    print '[!] ' + n + ' [Folder Path] [MAC]'
 
 def printGrap(d,m):
     x = []
@@ -67,7 +67,10 @@ def main():
         sys.exit()
     else:
         parseAll(sys.argv[1])
-    printGrap(value, sys.argv[2])
+        if len(value) != 0:
+            printGrap(value, sys.argv[2])
+        else:
+            print "[!] No Files"
 
 
 main()
