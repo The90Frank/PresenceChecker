@@ -34,8 +34,8 @@ lastexport = datetime.datetime.now()
 running = True
 interface = ''
 moninterface = ''
-monitor_disable = 'airmon-ng stop '
-monitor_enable  = 'airmon-ng start '
+monitor_disable = 'ifconfig %s down; iwconfig %s mode managed; ifconfig %s up;'
+monitor_enable  = 'ifconfig %s down; iwconfig %s mode monitor; ifconfig %s up;'
 canale = 0 #canali da 1-13 (giro i numeri da 0-12)
 directory = os.path.expanduser("~")
 imprexc = None
@@ -81,7 +81,8 @@ def interfaceLoop(t,nprint):
                     k = sorted_d[i][0]
                     s = sorted_d[i][1]
                     output_lines[i] = "MAC: {mc} - Signal: {sg}".format(mc = k, sg = s)
-
+                for i in range(ssize,nprint):
+                    output_lines[i] = "MAC: NN:NN:NN:NN:NN:NN - Signal: NaN"
                 time.sleep(t)
     except KeyboardInterrupt: raise
 
@@ -195,9 +196,13 @@ def main():
     interfaces = os.listdir('/sys/class/net/')
     
     parser = argparse.ArgumentParser(description="https://github.com/The90Frank/PresenceChecker/")
-    parser.add_argument("-i", "--interface", help="Wireless interface to use, e.g. wlan0mon", type=str, required=True)
-    parser.add_argument("-o", "--outfolder", help="Path to export capture", type=str)
+    parser.add_argument("-i", "--interface", help="Wireless monitor interface to use, e.g. wlan0mon", type=str, required=True)
+    parser.add_argument("-o", "--outfolder", help="Path to export capture, default: ~/PresenceCheckerLOG/", type=str)
     parser.add_argument("-il", "--ignorelist", help="Path to XML mac list to ignore", type=str)
+    parser.set_defaults(automonitor=False)
+    parser.add_argument("-am", "--automonitor", help="Made Monitor Mode automaticly on, set Managed at the end", dest='automonitor', action='store_true')
+    parser.set_defaults(nprintline=10)
+    parser.add_argument("-pl", "--printline", help="Number of outline", type=int, dest='nprintline')
 
     argms = parser.parse_args()
 
@@ -214,11 +219,11 @@ def main():
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    moninterface = interface # + 'mon'
-    monitor_enable = monitor_enable + interface + ';'
-    monitor_disable = monitor_disable + moninterface + ';'
+    moninterface = interface
+    monitor_enable = monitor_enable % (interface,interface,interface,)
+    monitor_disable = monitor_disable % (moninterface,moninterface,moninterface,)
 
-    if (argms.ignorelist is not None):
+    if (argms.ignorelist is not None) and (os.path.isfile(argms.ignorelist)):
         try:
             tree = ET.parse(argms.ignorelist)
             root = tree.getroot() 
@@ -228,9 +233,10 @@ def main():
             parser.print_help()
             sys.exit()
 
-    #os.system(monitor_enable)
+    if(argms.automonitor):
+        os.system(monitor_enable)
     t1 = Thread(target=channelLoop, args=(0.1,))
-    t2 = Thread(target=interfaceLoop, args=(0.5,10))
+    t2 = Thread(target=interfaceLoop, args=(0.5,argms.nprintline))
 
     try:
         t1.start()
@@ -241,7 +247,8 @@ def main():
     finally:
         t1.join()
         t2.join()
-        #os.system(monitor_disable)
+        if(argms.automonitor):
+            os.system(monitor_disable)
         sys.exit()
 
 main()
