@@ -224,10 +224,11 @@ def main():
     moninterface = interface
     monitor_enable = monitor_enable % (interface,interface,interface,)
     monitor_disable = monitor_disable % (moninterface,moninterface,moninterface,)
-    checkmonitormode = int(subprocess.check_output(monitor_check % (moninterface), shell=True))
-    if checkmonitormode == 0:
-        parser.print_help()
-        sys.exit()
+    if not (argms.automonitor):
+        checkmonitormode = int(subprocess.check_output(monitor_check % (moninterface), shell=True))
+        if checkmonitormode == 0:
+            parser.print_help()
+            sys.exit()
 
     if (argms.ignorelist is not None) and (os.path.isfile(argms.ignorelist)):
         try:
