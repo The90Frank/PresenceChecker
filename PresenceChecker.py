@@ -18,6 +18,7 @@ import thread
 import argparse
 import datetime
 import traceback
+import subprocess
 from reprint import output
 from threading import Thread
 import xml.etree.ElementTree as ET
@@ -36,6 +37,7 @@ interface = ''
 moninterface = ''
 monitor_disable = 'ifconfig %s down; iwconfig %s mode managed; ifconfig %s up;'
 monitor_enable  = 'ifconfig %s down; iwconfig %s mode monitor; ifconfig %s up;'
+monitor_check = 'VAR=echo iwconfig %s | grep Monitor | wc -l; exit $VAR;'
 canale = 0 #canali da 1-13 (giro i numeri da 0-12)
 directory = os.path.expanduser("~")
 imprexc = None
@@ -199,11 +201,11 @@ def main():
     parser.add_argument("-i", "--interface", help="Wireless monitor interface to use, e.g. wlan0mon", type=str, required=True)
     parser.add_argument("-o", "--outfolder", help="Path to export capture, default: ~/PresenceCheckerLOG/", type=str)
     parser.add_argument("-il", "--ignorelist", help="Path to XML mac list to ignore", type=str)
-    parser.set_defaults(automonitor=False)
-    parser.add_argument("-am", "--automonitor", help="Made Monitor Mode automaticly on, set Managed at the end", dest='automonitor', action='store_true')
     parser.set_defaults(nprintline=10)
     parser.add_argument("-pl", "--printline", help="Number of outline", type=int, dest='nprintline')
-
+    parser.set_defaults(automonitor=False)
+    parser.add_argument("-am", "--automonitor", help="Goto Monitor Mode automaticly, set Managed at the end", dest='automonitor', action='store_true')
+    
     argms = parser.parse_args()
 
     if (argms.interface in interfaces):
@@ -222,6 +224,10 @@ def main():
     moninterface = interface
     monitor_enable = monitor_enable % (interface,interface,interface,)
     monitor_disable = monitor_disable % (moninterface,moninterface,moninterface,)
+    checkmonitormode = int(subprocess.check_output(monitor_check % (moninterface), shell=True))
+    if checkmonitormode == 0:
+        parser.print_help()
+        sys.exit()
 
     if (argms.ignorelist is not None) and (os.path.isfile(argms.ignorelist)):
         try:
