@@ -1,10 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 #################################
 #                               #
 #       Presence Checker        #
-#   Progetto Gestione di Rete   #
-#          AA 2017/18           #
 #                               #
 #      Francesco Vatteroni      #
 #                               #
@@ -17,6 +15,7 @@ import pcapy
 import signal
 import struct
 import thread
+import argparse
 import datetime
 import traceback
 from reprint import output
@@ -195,43 +194,54 @@ def main():
 
     interfaces = os.listdir('/sys/class/net/')
     
-    if (len(sys.argv) == 2) and (sys.argv[1] in interfaces) or ((len(sys.argv) == 3) and (sys.argv[1] in interfaces) and (os.path.isfile(sys.argv[2]))):
-        interface = sys.argv[1]
+    parser = argparse.ArgumentParser(description="https://github.com/The90Frank/PresenceChecker/")
+    parser.add_argument("-i", "--interface", help="Wireless interface to use, e.g. wlan0mon", type=str, required=True)
+    parser.add_argument("-o", "--outfolder", help="Path to export capture", type=str)
+    parser.add_argument("-il", "--ignorelist", help="Path to XML mac list to ignore", type=str)
 
-        #cartella per export
-        directory = directory + "/PresenceCheckerLOG/" + interface
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+    argms = parser.parse_args()
 
-        moninterface = interface # + 'mon'
-        monitor_enable = monitor_enable + interface + ';'
-        monitor_disable = monitor_disable + moninterface + ';'
+    if (argms.interface in interfaces):
+        interface = argms.interface
+    else:
+        parser.print_help()
+        sys.exit()
+    
+    #cartella per export
+    directory = directory + "/PresenceCheckerLOG/" + interface   
+    if (argms.outfolder is not None) and (not os.path.isfile(argms.outfolder)):
+        directory = argms.outfolder
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-        if len(sys.argv) == 3:
-            tree = ET.parse(sys.argv[2])
+    moninterface = interface # + 'mon'
+    monitor_enable = monitor_enable + interface + ';'
+    monitor_disable = monitor_disable + moninterface + ';'
+
+    if (argms.ignorelist is not None):
+        try:
+            tree = ET.parse(argms.ignorelist)
             root = tree.getroot() 
-
             for child in root:
                 ignore.append(child.text)
-
-        #os.system(monitor_enable)
-        t1 = Thread(target=channelLoop, args=(0.1,))
-        t2 = Thread(target=interfaceLoop, args=(0.5,10))
-
-        try:
-            t1.start()
-            t2.start()
-            mysniff(moninterface)
-        except KeyboardInterrupt: 
-            running = False
-        finally:
-            t1.join()
-            t2.join()
-            #os.system(monitor_disable)
+        except:
+            parser.print_help()
             sys.exit()
-    else:
-        print '[!] Insert a valid interface or a valid ignore file'
-        print '[!] example: python ' + sys.argv[0] + ' wlan0mon'
-        print '[!] example: python ' + sys.argv[0] + ' wlan0mon ./ignore.xml'
+
+    #os.system(monitor_enable)
+    t1 = Thread(target=channelLoop, args=(0.1,))
+    t2 = Thread(target=interfaceLoop, args=(0.5,10))
+
+    try:
+        t1.start()
+        t2.start()
+        mysniff(moninterface)
+    except KeyboardInterrupt: 
+        running = False
+    finally:
+        t1.join()
+        t2.join()
+        #os.system(monitor_disable)
+        sys.exit()
 
 main()
