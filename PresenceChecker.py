@@ -241,6 +241,7 @@ def main():
             sys.exit()
 
     if(argms.automonitor):
+        print "[!] WARNING: automatic monitor mode is unstable [!]"
         os.system(monitor_enable)
     t1 = Thread(target=channelLoop, args=(0.1,))
     t2 = Thread(target=interfaceLoop, args=(0.5,argms.nprintline))
