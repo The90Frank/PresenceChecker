@@ -10,6 +10,8 @@
 
 import os
 import sys
+import json
+import requests
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
 from datetime import datetime,  timedelta
@@ -18,6 +20,12 @@ value = {}
 
 def printUsage(n):
     print '[!] ' + n + ' [Folder Path] [MAC]'
+
+def srcVendor(m):
+    MAC_URL = 'http://macvendors.co/api/%s'
+    r = requests.get(MAC_URL % m)
+    obj = r.json()['result']['company']
+    return obj
 
 def printGrap(d,m):
     x = []
@@ -41,6 +49,10 @@ def printGrap(d,m):
                 s = int(e[1][:-3])
         plt.xticks(rotation = 30)
         plt.yticks(rotation = 30)
+        
+        vendor = srcVendor(m)
+        plt.title(vendor + "\n" + m)
+
         plt.plot(x, y)
         plt.show()
     else:
