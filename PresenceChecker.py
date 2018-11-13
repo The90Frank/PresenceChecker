@@ -94,7 +94,10 @@ def addressDecode(x):
     aux = [None] * 6
     for i in range(0,6):
         #salto i primi 8 byte per ottenere il mac trasmittente
-        aux[i] = hex(x.get_byte(8+i))[2:]
+        if x.get_byte(8+i) < 16:
+            aux[i] = '0'+str(hex(x.get_byte(8+i))[2:])
+        else:
+            aux[i] = str(hex(x.get_byte(8+i))[2:])
     s = ':'.join(aux)
     return s
 
