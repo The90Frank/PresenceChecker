@@ -11,6 +11,7 @@
 import os
 import sys
 import json
+import argparse
 import requests
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
@@ -79,15 +80,17 @@ def parseAll(path):
             
 
 def main():
-    if ((len(sys.argv) != 3) or not(os.path.isdir(sys.argv[1]))):
-        printUsage(sys.argv[0])
-        sys.exit()
+    parser = argparse.ArgumentParser(description="https://github.com/The90Frank/PresenceChecker/")
+    parser.add_argument("-d", "--directory", help="Path to import XML file", type=str, required=True)
+    parser.add_argument("-m", "--macaddress", help="MAC address to analyze, e.g. 00:11:22:33:44:55", type=str, required=True)
+    argms = parser.parse_args()
+
+    parseAll(argms.directory)
+
+    if len(value) != 0:
+        printGrap(value, argms.macaddress)
     else:
-        parseAll(sys.argv[1])
-        if len(value) != 0:
-            printGrap(value, sys.argv[2])
-        else:
-            print "[!] No Files"
+        print "[!] No Files"
 
 
 main()
