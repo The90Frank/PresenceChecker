@@ -2,7 +2,7 @@
 
 #################################
 #                               #
-#        Prschk Analyzer        #
+#           Analyzer            #
 #                               #
 #      Francesco Vatteroni      #
 #                               #
@@ -18,9 +18,6 @@ import xml.etree.ElementTree as ET
 from datetime import datetime,  timedelta
 
 value = {}
-
-def printUsage(n):
-    print '[!] ' + n + ' [Folder Path] [MAC]'
 
 def srcVendor(m):
     MAC_URL = 'http://macvendors.co/api/%s'
@@ -51,7 +48,10 @@ def printGrap(d,m):
         plt.xticks(rotation = 30)
         plt.yticks(rotation = 30)
         
-        vendor = srcVendor(m)
+        try:
+            vendor = srcVendor(m)
+        except: 
+            vendor = "Nil"
         plt.title(vendor + "\n" + m)
 
         plt.plot(x, y)
@@ -85,12 +85,13 @@ def main():
     parser.add_argument("-m", "--macaddress", help="MAC address to analyze, e.g. 00:11:22:33:44:55", type=str, required=True)
     argms = parser.parse_args()
 
-    parseAll(argms.directory)
+    parseAll(os.path.abspath(argms.directory))
 
     if len(value) != 0:
         printGrap(value, argms.macaddress)
     else:
         print "[!] No Files"
+        parser.print_help()
 
 
 main()
