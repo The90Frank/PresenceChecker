@@ -85,13 +85,21 @@ def main():
     parser.add_argument("-m", "--macaddress", help="MAC address to analyze, e.g. 00:11:22:33:44:55", type=str, required=True)
     argms = parser.parse_args()
 
-    parseAll(os.path.abspath(argms.directory))
+    try:
+        p = os.path.abspath(argms.directory)
+    except:
+        parser.print_help()
+        sys.exit()
+
+    parseAll(p)
 
     if len(value) != 0:
         printGrap(value, argms.macaddress)
     else:
         print "[!] No Files"
         parser.print_help()
+
+    sys.exit()
 
 
 main()
