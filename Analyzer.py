@@ -91,9 +91,14 @@ def main():
         parser.print_help()
         sys.exit()
 
-    parseAll(p)
+    try:
+        parseAll(p)
+    except:
+        print "[!] Something was wrong in this folder"
+        parser.print_help()
+        sys.exit()
 
-    if len(value) != 0:
+    if value:
         printGrap(value, argms.macaddress)
     else:
         print "[!] No Files"
